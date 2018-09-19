@@ -25,6 +25,14 @@ RegisterOperators reg({
           return 0;
         }),
 });
+
+RegisterOperators nn_functional_reg({
+    Operator(
+        "aten::tanhshrink(Tensor self) -> Tensor[]",
+        [](Stack& stack) {
+          return 0;
+        })
+});
 }
 } // namespace jit
 } // namespace torch

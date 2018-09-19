@@ -672,7 +672,6 @@ Value* emitBuiltinCall(
   // otherwise it will return nullptr if the builtin is not found.
   bool required) {
 
-
   const auto& variants = getAllOperatorsFor(name);
   std::stringstream failure_messages;
   //first we try to match the schema without any conversion
@@ -716,6 +715,8 @@ std::shared_ptr<SugaredValue> BuiltinFunction::call(
     at::ArrayRef<NamedValue> attributes,
     size_t n_binders) {
   std::vector<NamedValue> inputs;
+  std::cout << "builtin call\n";
+  loc.highlight(std::cout);
   if (value)
     inputs.push_back(*value);
   inputs.insert(inputs.end(), inputs_.begin(), inputs_.end());

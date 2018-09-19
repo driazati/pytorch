@@ -276,6 +276,8 @@ std::shared_ptr<SugaredValue> toSugaredValue(
   // f = python_constant
   // while ...
   //   f = f + 1
+  std::cout << "Getting sugared \n";
+  loc.highlight(std::cout);
   auto& g = *m.graph();
   if (is_constant) {
     if (py::isinstance<py::int_>(obj)) {
@@ -317,7 +319,9 @@ std::shared_ptr<SugaredValue> toSugaredValue(
     return std::make_shared<PythonModuleValue>(obj);
   }
   py::object builtin_name = py::module::import("torch.jit").attr("_find_builtin")(obj);
+  std::cout << py::str(obj) << std::endl;
   if (!builtin_name.is_none()) {
+    std::cout << "Not non, returning builtin funtion for " << py::str(builtin_name) << std::endl;
     return std::make_shared<BuiltinFunction>(
         Symbol::fromQualString(py::str(builtin_name)), at::nullopt);
   }
