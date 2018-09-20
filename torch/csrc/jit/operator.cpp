@@ -313,10 +313,6 @@ public:
 
 
   const std::vector<std::shared_ptr<Operator>>& getOperators(Symbol name) {
-    std::cout << "LOoking up operators for " << name.toQualString() << " with table:" << std::endl;
-    for (auto by_sig : operators_by_sig) {
-      std::cout << by_sig.first << std::endl;
-    }
     std::lock_guard<std::mutex> guard(lock);
     registerPendingOperators();
     static std::vector<std::shared_ptr<Operator>> empty;

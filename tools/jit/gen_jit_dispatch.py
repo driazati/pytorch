@@ -119,6 +119,21 @@ Operator(
 ),
 """)
 
+WEAK_OPERATOR = CodeTemplate("""\
+Operator(
+    "${signature}", [](Stack& stack) {
+    std::string source = R"JIT(${source})JIT";
+    auto module = std::make_shared<jit::script::Module>();
+    defineMethodsInModule(
+        *module, source, script::nativeResolver, /*self=*/nullptr);
+    auto result = module->get_method("${name}")(stack);
+    drop(stack, ${num_inputs});
+    pack(stack, std::move(result));
+    return 0;
+}
+),
+""")
+
 
 def is_magic_method(api_name):
     return api_name.startswith('__') and api_name.endswith('__')
@@ -278,6 +293,30 @@ def gen_jit_dispatch(declarations, out, template_path):
     for decl in jit_decls:
         ops.append(OPERATOR.substitute(signature=signature(decl),
                                        op=emit_decl_variant(decl)))
+
+    # add weak functional scripts (to be compiled from python at runtime)
+    import inspect
+    import torch
+    comment_matcher = re.compile(r"r\"\"\".*\"\"\"", re.MULTILINE | re.DOTALL)
+    IGNORE_NN_FUNCTIONAL = set(['adaptive_avg_pool1d', 'Col2Im', 'ConstantPadNd', 'GRID_SAMPLE_INTERPOLATION_MODES', 'GRID_SAMPLE_PADDING_MODES', 'Im2Col', '_Reduction', '_VF', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', '_add_docstr', '_functions', '_get_softmax_dim', '_gumbel_softmax_sample', '_infer_size', '_list_with_default', '_pair', '_pointwise_loss', '_sample_gumbel', '_single', '_triple', '_unpool_output_size'])
+    for name in dir(torch.nn.functional):
+        if name in IGNORE_NN_FUNCTIONAL:
+            continue
+        fn = getattr(torch.nn.functional, name)
+        if not callable(fn):
+            continue
+        try:
+            source = inspect.getsource(fn)
+
+            source = comment_matcher.sub("", source)
+            num_inputs = len(inspect.signature(fn).parameters)
+        except:
+            print("Skipped nn.functional op:", name)
+            continue
+        # TODO: make this more generic
+        weak_op_sig = "aten::" + name + "(Tensor self) -> Tensor[]"
+        ops.append(WEAK_OPERATOR.substitute(signature=weak_op_sig, source=source, name=name, num_inputs=num_inputs))
+
 
     # Sort the generated snippets to ensure that the generation is deterministic
     env = {

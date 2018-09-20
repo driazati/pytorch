@@ -21,18 +21,8 @@ RegisterOperators reg({
         }),
     Operator(
         "aten::Size(int[] sizes) -> int[]",
-        [](Stack& stack) {
-          return 0;
-        }),
+        [](Stack& stack) { return 0; }),
 });
-
-RegisterOperators nn_functional_reg({
-    Operator(
-        "aten::tanhshrink(Tensor self) -> Tensor[]",
-        [](Stack& stack) {
-          return 0;
-        })
-});
-}
+} // namespace
 } // namespace jit
 } // namespace torch

@@ -1148,16 +1148,12 @@ def _get_builtin_table():
     _builtin_table = {}
 
     def register_all(mod):
-        print("REGISTER_ALL_CALL")
         count = 0
         for name in dir(mod):
             v = getattr(mod, name)
-            print(count, "Registering builtin", name)
             count += 1
             if callable(v):
                 _builtin_table[id(v)] = "aten::" + name
-            else:
-                print("\tnot callable!")
     for mod in _modules_containing_builtins:
         register_all(mod)
 

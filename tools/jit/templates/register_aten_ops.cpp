@@ -1,5 +1,6 @@
 #include "torch/csrc/jit/operator.h"
 #include "torch/csrc/jit/custom_operator.h"
+#include "torch/csrc/jit/script/compiler.h"
 
 #include "torch/csrc/autograd/profiler.h"
 #include "torch/csrc/jit/interned_strings.h"
@@ -19,6 +20,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
+#include <memory>
 #include <utility>
 #include <vector>
 
