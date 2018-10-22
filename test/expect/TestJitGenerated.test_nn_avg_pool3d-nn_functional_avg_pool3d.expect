@@ -1,0 +1,10 @@
+graph(%i0 : Dynamic) {
+  %1 : bool = prim::Constant[value=1]()
+  %2 : bool = prim::Constant[value=0]()
+  %3 : int[] = prim::Constant[value=[0, 0, 0]]()
+  %4 : int[] = prim::Constant[value=[]]()
+  %5 : int = prim::Constant[value=3]()
+  %6 : int[] = prim::ListConstruct(%5, %5, %5)
+  %7 : Dynamic = aten::avg_pool3d(%i0, %6, %4, %3, %2, %1)
+  return (%7);
+}

@@ -1,0 +1,11 @@
+graph(%i0 : Dynamic
+      %i1 : Dynamic
+      %i2 : Dynamic) {
+  %3 : int = prim::Constant[value=1]()
+  %4 : bool = prim::Constant[value=0]()
+  %5 : float = prim::Constant[value=1e-06]()
+  %6 : float = prim::Constant[value=2]()
+  %7 : float = prim::Constant[value=1]()
+  %8 : Dynamic = aten::triplet_margin_loss(%i0, %i1, %i2, %7, %6, %5, %4, %3)
+  return (%8);
+}

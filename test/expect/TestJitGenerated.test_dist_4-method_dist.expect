@@ -1,0 +1,6 @@
+graph(%i0 : Dynamic
+      %i1 : Dynamic) {
+  %2 : int = prim::Constant[value=4]()
+  %3 : Dynamic = aten::dist(%i0, %i1, %2)
+  return (%3);
+}

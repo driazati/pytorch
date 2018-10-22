@@ -1,0 +1,5 @@
+graph(%i0 : Dynamic) {
+  %1 : bool = prim::Constant[value=1]()
+  %2 : Dynamic, %3 : Dynamic = aten::symeig(%i0, %1, %1)
+  return (%2, %3);
+}

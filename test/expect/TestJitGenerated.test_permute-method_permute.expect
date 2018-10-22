@@ -1,0 +1,9 @@
+graph(%i0 : Dynamic) {
+  %1 : int = prim::Constant[value=0]()
+  %2 : int = prim::Constant[value=2]()
+  %3 : int = prim::Constant[value=3]()
+  %4 : int = prim::Constant[value=1]()
+  %5 : int[] = prim::ListConstruct(%1, %2, %3, %4)
+  %6 : Dynamic = aten::permute(%i0, %5)
+  return (%6);
+}

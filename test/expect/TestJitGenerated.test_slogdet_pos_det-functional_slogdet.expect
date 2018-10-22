@@ -1,0 +1,4 @@
+graph(%i0 : Dynamic) {
+  %1 : Dynamic, %2 : Dynamic = aten::slogdet(%i0)
+  return (%1, %2);
+}

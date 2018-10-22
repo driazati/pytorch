@@ -1,0 +1,5 @@
+graph(%i0 : Dynamic
+      %i1 : Dynamic) {
+  %2 : Dynamic = aten::take(%i0, %i1)
+  return (%2);
+}

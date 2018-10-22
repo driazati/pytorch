@@ -1,0 +1,8 @@
+graph(%i0 : Dynamic
+      %i1 : Dynamic
+      %i2 : Dynamic) {
+  %3 : int = prim::Constant[value=1]()
+  %4 : float = prim::Constant[value=0]()
+  %5 : Dynamic = aten::cosine_embedding_loss(%i0, %i1, %i2, %4, %3)
+  return (%5);
+}

@@ -8180,6 +8180,7 @@ def create_script_fn(self, method_name, func_type, output_process_fn,
             CU.the_method.debug_disable_autodiff_subgraph_inlining()
         self.assertExportImport(CU.the_method.graph, tensors)
         output = output_process_fn(CU.the_method(*tensors))
+        self.assertExpectedGraph(CU.the_method.graph, '{}_{}'.format(func_type, method_name))
         script_fn.last_graph = CU.the_method.graph_for(*tensors)
         return output
     return script_fn

@@ -1,0 +1,7 @@
+graph(%i0 : Dynamic
+      %i1 : Dynamic
+      %i2 : Dynamic) {
+  %3 : float = prim::Constant[value=0.5]()
+  %4 : Dynamic = aten::addcmul(%i0, %i1, %i2, %3)
+  return (%4);
+}

@@ -1,0 +1,5 @@
+graph(%i0 : Dynamic) {
+  %1 : float = prim::Constant[value=0.9]()
+  %2 : Dynamic = aten::celu(%i0, %1)
+  return (%2);
+}

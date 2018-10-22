@@ -1,0 +1,6 @@
+graph(%i0 : Dynamic) {
+  %1 : int = prim::Constant[value=5]()
+  %2 : int[] = prim::ListConstruct(%1)
+  %3 : Dynamic = aten::adaptive_avg_pool1d(%i0, %2)
+  return (%3);
+}

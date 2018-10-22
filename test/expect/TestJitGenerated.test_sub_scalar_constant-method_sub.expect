@@ -1,0 +1,6 @@
+graph(%i0 : Dynamic) {
+  %1 : int = prim::Constant[value=1]()
+  %2 : float = prim::Constant[value=3.14]()
+  %3 : Dynamic = aten::sub(%i0, %2, %1)
+  return (%3);
+}

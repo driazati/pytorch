@@ -1,0 +1,5 @@
+graph(%i0 : Dynamic) {
+  %1 : int[] = prim::ListConstruct()
+  %2 : Dynamic = aten::view(%i0, %1)
+  return (%2);
+}

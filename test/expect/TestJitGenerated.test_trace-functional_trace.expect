@@ -1,0 +1,4 @@
+graph(%i0 : Dynamic) {
+  %1 : Dynamic = aten::trace(%i0)
+  return (%1);
+}

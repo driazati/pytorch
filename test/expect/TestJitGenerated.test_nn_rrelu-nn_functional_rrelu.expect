@@ -1,0 +1,8 @@
+graph(%i0 : Dynamic) {
+  %1 : bool = prim::Constant[value=0]()
+  %2 : float = prim::Constant[value=0.1]()
+  %3 : float = prim::Constant[value=0.3]()
+  %4 : Generator = prim::NoneGenerator()
+  %5 : Dynamic = aten::rrelu(%i0, %2, %3, %1, %4)
+  return (%5);
+}

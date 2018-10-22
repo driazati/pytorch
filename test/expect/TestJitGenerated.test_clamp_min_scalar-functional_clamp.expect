@@ -1,0 +1,6 @@
+graph(%i0 : Dynamic) {
+  %1 : float = prim::Constant[value=nan]()
+  %2 : float = prim::Constant[value=0.5]()
+  %3 : Dynamic = aten::clamp(%i0, %1, %2)
+  return (%3);
+}

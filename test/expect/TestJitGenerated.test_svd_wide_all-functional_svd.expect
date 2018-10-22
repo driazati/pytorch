@@ -1,0 +1,6 @@
+graph(%i0 : Dynamic) {
+  %1 : bool = prim::Constant[value=1]()
+  %2 : bool = prim::Constant[value=0]()
+  %3 : Dynamic, %4 : Dynamic, %5 : Dynamic = aten::svd(%i0, %2, %1)
+  return (%3, %4, %5);
+}

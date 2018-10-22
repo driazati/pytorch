@@ -1,0 +1,10 @@
+graph(%i0 : Dynamic) {
+  %1 : bool = prim::Constant[value=1]()
+  %2 : float = prim::Constant[value=1e-05]()
+  %3 : int = prim::Constant[value=5]()
+  %4 : int[] = prim::ListConstruct(%3)
+  %5 : Dynamic = prim::Undefined()
+  %6 : Dynamic = prim::Undefined()
+  %7 : Dynamic = aten::layer_norm(%i0, %4, %5, %6, %2, %1)
+  return (%7);
+}
