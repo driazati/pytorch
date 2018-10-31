@@ -30,6 +30,7 @@ TYPE_MAP = {
     'Scalar': 'Scalar',
     'Scalar?': 'Scalar?',
     'Tensor': 'Tensor',
+    'Tensor?': 'Tensor?',
     'TensorList': 'Tensor[]',
     # this appears in return values instead of TensorList
     # since TensorList is a ArrayRef in arguments but a vector
@@ -46,12 +47,30 @@ TYPE_MAP = {
 }
 
 
+def is_nullable_tensor(arg, typ):
+    print(arg)
+    return 'dynamic_type' in arg and \
+        arg['dynamic_type'] == 'Tensor' and \
+        'is_nullable' in arg and \
+        arg['is_nullable'] and typ[-1] != '?'
+
+
+def get_type(arg):
+    """
+    Get type with ? if it is nullable
+    """
+    typ = arg['simple_type']
+    if is_nullable_tensor(arg, typ):
+        return '{}?'.format(typ)
+    return typ
+
+
 def jit_type_of(arg):
     # override for when viewing ops have already set
     # annotated jit types
     if 'jit_type' in arg:
         return arg['jit_type']
-    typ = TYPE_MAP[arg['simple_type']]
+    typ = TYPE_MAP[get_type(arg)]
     if is_sized_intlist_arg(arg):
         typ = 'int[{}]'.format(arg['size'])
 
@@ -68,6 +87,7 @@ FROM_IVALUE = {
     'Scalar?': '{}.toOptional<Scalar>()',
     'ScalarType': '{}.to<at::ScalarType>()',
     'Tensor': '{}.toTensor()',
+    'Tensor?': '{}.toTensor()',
     'TensorList': '{}.toTensorList()->elements()',
     'bool': '{}.toBool()',
     'double': '{}.toDouble()',
@@ -81,7 +101,7 @@ FROM_IVALUE = {
 
 
 def from_ivalue(arg, value):
-    simple_type = arg['simple_type']
+    simple_type = get_type(arg)
     return FROM_IVALUE[simple_type].format(value)
 
 
@@ -407,7 +427,7 @@ def signature(decl):
     def format_arg(arg):
         name = arg['name'] if not arg.get('output') else 'out'
         typ = jit_type_of(arg)
-        decl = '{} {}'.format(typ, name)
+        arg_decl = '{} {}'.format(typ, name)
         if 'default' in arg:
             # clean up initializer lists {{true, true}} -> [true, true]
             default = str(arg['default']) \
@@ -421,8 +441,8 @@ def signature(decl):
                 .replace('}', ']')
 
             default = default_map.get(default, default)
-            decl = '{}={}'.format(decl, default)
-        return decl
+            arg_decl = '{}={}'.format(arg_decl, default)
+        return arg_decl
 
     args = []
     kwarg_only = False

@@ -1360,8 +1360,10 @@ def embedding_bag(input, weight, offsets=None, max_norm=None, norm_type=2,
     return ret
 
 
+@torch._jit_internal.weak_script
 def batch_norm(input, running_mean, running_var, weight=None, bias=None,
                training=False, momentum=0.1, eps=1e-5):
+    # type: (Tensor, ) -> Tensor
     r"""Applies Batch Normalization for each channel across a batch of data.
 
     See :class:`~torch.nn.BatchNorm1d`, :class:`~torch.nn.BatchNorm2d`,
@@ -1377,8 +1379,10 @@ def batch_norm(input, running_mean, running_var, weight=None, bias=None,
     )
 
 
+@torch._jit_internal.weak_script
 def instance_norm(input, running_mean=None, running_var=None, weight=None,
                   bias=None, use_input_stats=True, momentum=0.1, eps=1e-5):
+    # type: (Tensor, Optional[Tensor], Optional[Tensor], Optional[Tensor], Optional[Tensor], bool, float, float) -> Tensor
     r"""Applies Instance Normalization for each channel in each data sample in a
     batch.
 
@@ -1391,7 +1395,9 @@ def instance_norm(input, running_mean=None, running_var=None, weight=None,
     )
 
 
+@torch._jit_internal.weak_script
 def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-5):
+    # type: (Tensor, ) -> Tensor
     r"""Applies Layer Normalization for last certain number of dimensions.
 
     See :class:`~torch.nn.LayerNorm` for details.
@@ -1400,7 +1406,9 @@ def layer_norm(input, normalized_shape, weight=None, bias=None, eps=1e-5):
                             torch.backends.cudnn.enabled)
 
 
+@torch._jit_internal.weak_script
 def group_norm(input, num_groups, weight=None, bias=None, eps=1e-5):
+    # type: (Tensor, ) -> Tensor
     r"""Applies Group Normalization for last certain number of dimensions.
 
     See :class:`~torch.nn.GroupNorm` for details.
