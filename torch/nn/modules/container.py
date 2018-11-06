@@ -6,6 +6,7 @@ import operator
 
 import torch
 from .module import Module
+from ..._jit_internal import weak_module, weak_script_method
 
 
 class Container(Module):
@@ -19,6 +20,7 @@ class Container(Module):
             self.add_module(key, value)
 
 
+@torch._jit_internal.weak_module
 class Sequential(Module):
     r"""A sequential container.
     Modules will be added to it in the order they are passed in the constructor.
@@ -50,6 +52,7 @@ class Sequential(Module):
                 self.add_module(key, module)
         else:
             for idx, module in enumerate(args):
+                print("Adding module", idx, module)
                 self.add_module(str(idx), module)
 
     def _get_item_by_idx(self, iterator, idx):
@@ -87,6 +90,7 @@ class Sequential(Module):
         keys = [key for key in keys if not key.isdigit()]
         return keys
 
+    @torch._jit_internal.weak_script_method
     def forward(self, input):
         for module in self._modules.values():
             input = module(input)
