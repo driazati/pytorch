@@ -752,7 +752,9 @@ In-place version of :func:`~relu`.
 """)
 
 
+@torch._jit_internal.weak_script
 def glu(input, dim=-1):
+    # type: (Tensor, int) -> Tensor
     r"""
     glu(input, dim=-1) -> Tensor
 

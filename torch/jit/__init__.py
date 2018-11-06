@@ -1316,6 +1316,7 @@ _builtin_blacklist = {
     'prelu',
     'hardshrink',
     'threshold',
+    'glu',
 
     # ops with inplace option
     'relu',
