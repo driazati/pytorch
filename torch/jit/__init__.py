@@ -7,7 +7,7 @@ import torch.jit.annotations
 from torch._six import raise_from, with_metaclass, get_function_from_type
 from .._jit_internal import createResolutionCallback, _compiled_weak_fns, \
     _weak_script_methods, _weak_modules, _weak_types, COMPILED, \
-    COMPILATION_PENDING
+    COMPILATION_PENDING, _unwrap_optional, _construct_empty_int_list
 from ..nn.modules.utils import _single, _pair, _triple, _quadruple
 import torch.testing
 from collections import defaultdict, OrderedDict, namedtuple
@@ -652,6 +652,7 @@ def _try_get_weak_module(mod):
     """
     Get the WeakScriptModuleProxy corresponding to mod if it exists
     """
+    print(mod)
     if not isinstance(mod, Module):
         return None
     return _weak_modules.get(mod)
@@ -1327,16 +1328,13 @@ _builtin_blacklist = {
     'dropout2d',
     'dropout3d',
     'feature_alpha_dropout',
+    'max_unpool1d',
+    '_unpool_output_size',
 }
 
 
 def _should_skip(mod, name):
     return mod is torch.nn.functional and name in _builtin_blacklist
-
-
-def _unwrap_optional(x):
-    assert x is not None, "Unwrapping null optional"
-    return x
 
 
 # lazily built to ensure the correct initialization order
@@ -1360,6 +1358,7 @@ def _get_builtin_table():
     _builtin_table[id(_triple)] = "aten::_triple"
     _builtin_table[id(_quadruple)] = "aten::_quadruple"
     _builtin_table[id(_unwrap_optional)] = "aten::_unwrap_optional"
+    _builtin_table[id(list)] = "aten::list"
 
     return _builtin_table
 
@@ -1369,13 +1368,8 @@ def _register_builtin(fn, op):
 
 
 def _find_builtin(fn):
+    print("finding", fn)
     return _get_builtin_table().get(id(fn))
-
-
-# Python equivalents for the empty list construction builtins. We need
-# these otherwise the tests won't execute in regular Python mode.
-def _construct_empty_int_list():
-    return []
 
 
 _register_builtin(_construct_empty_int_list, 'aten::_construct_empty_int_list')

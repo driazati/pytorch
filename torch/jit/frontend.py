@@ -174,7 +174,9 @@ def build_def(ctx, py_def, type_line, is_method):
     if getattr(py_def, 'returns', None) is not None:
         return_type = build_expr(ctx, py_def.returns)
     decl = Decl(r, param_list, return_type)
+    print("building def", type_line)
     if type_line is not None:
+        print("POasring")
         type_comment_decl = torch._C.parse_type_comment(type_line)
         decl = torch._C.merge_type_from_type_comment(decl, type_comment_decl, is_method)
     return Def(Ident(r, py_def.name),

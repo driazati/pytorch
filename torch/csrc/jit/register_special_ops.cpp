@@ -28,6 +28,14 @@ RegisterOperators reg({
           return 0;
         }),
     Operator(
+        "aten::size(Tensor self) -> int[]",
+        [](Stack& stack) {
+          autograd::profiler::RecordFunction record("sizes");
+          auto result = (std::move(pop(stack))).toTensor().sizes();
+          pack(stack, std::move(result));
+          return 0;
+        }),
+    Operator(
         "aten::format(str self, ...) -> str",
         [](const Node* node) {
           size_t num_inputs = node->inputs().size();

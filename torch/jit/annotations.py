@@ -12,7 +12,7 @@ PY35 = sys.version_info >= (3, 5)
 
 try:
     import typing
-    from typing import Tuple
+    from typing import Tuple, Optional
 
     def is_tuple(ann):
         # For some reason Python 3.7 violates the Type[A, B].__origin__ == Type rule
@@ -64,15 +64,22 @@ _eval_env = {
     'Tensor': torch.Tensor,
     'typing': Module('typing', {'Tuple': Tuple}),
     'Tuple': Tuple,
+    'BroadcastingList': BroadcastingList,
+    'Optional': Optional,
+    'List': Tuple,
 }
 
 
 def get_signature(fn):
     # Python 3.5 adds support for the nice annotation syntax, so try that first.
+    print("getting sig")
     if PY35:
+        print("its py35")
         sig = try_real_annotations(fn)
         if sig is not None:
             return sig
+        else:
+            print("no sig")
 
     type_line, source = None, None
     try:
@@ -121,6 +128,7 @@ def parse_type_line(type_line):
         # type: (Tensor, Tuple[Tensor, Tensor]) -> Tensor
     """
     arg_ann_str, ret_ann_str = split_type_line(type_line)
+    print("Parsing ", type_line)
 
     try:
         arg_ann = eval(arg_ann_str, _eval_env)
