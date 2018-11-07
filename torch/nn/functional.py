@@ -991,16 +991,13 @@ softplus(input, beta=1, threshold=20) -> Tensor
 """)
 
 
-@torch._jit_internal.weak_script
 def _get_softmax_dim(name, ndim, stacklevel):
-    # type: (str, int, int) -> int
-    warnings.warn("Implicit dimension choice for {} has been deprecated. "
-                  "Change the call to include dim=X as an argument.".format(name))
+    warnings.warn("Implicit dimension choice for " + name + " has been deprecated. "
+                  "Change the call to include dim=X as an argument.", stacklevel=stacklevel)
     if ndim == 0 or ndim == 1 or ndim == 3:
-        ret = 0
+        return 0
     else:
-        ret = 1
-    return ret
+        return 1
 
 
 def softmin(input, dim=None, _stacklevel=3, dtype=None):
@@ -1026,9 +1023,7 @@ def softmin(input, dim=None, _stacklevel=3, dtype=None):
         return (-input).softmax(dim, dtype=dtype)
 
 
-@torch._jit_internal.weak_script
 def softmax(input, dim=None, _stacklevel=3, dtype=None):
-    # type: (Tensor, Optional[int], int, Optional[int]) -> Tensor
     r"""Applies a softmax function.
 
     Softmax is defined as:
@@ -1056,13 +1051,10 @@ def softmax(input, dim=None, _stacklevel=3, dtype=None):
     """
     if dim is None:
         dim = _get_softmax_dim('softmax', input.dim(), _stacklevel)
-    dim = torch.jit._unwrap_optional(dim)
     if dtype is None:
-        ret = input.softmax(dim)
+        return input.softmax(dim)
     else:
-        dtype = torch.jit._unwrap_optional(dtype)
-        ret = input.softmax(dim, dtype=dtype)
-    return ret
+        return input.softmax(dim, dtype=dtype)
 
 
 def _sample_gumbel(shape, eps=1e-10, out=None):
