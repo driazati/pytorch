@@ -1001,6 +1001,10 @@ private:
         case TK_PASS:
           // Emit nothing for pass
           break;
+        case TK_WITH:
+          // Emit nothing for with
+          emitWith(With(stmt));
+          break;
         default:
           throw ErrorReport(stmt)
               << "Unrecognized statement kind " << kindToString(stmt.kind());
@@ -1343,6 +1347,11 @@ private:
   void emitWhile(const While& stmt) {
     auto cond = stmt.cond();
     emitLoopCommon(stmt.range(), {}, {cond}, stmt.body(), {});
+  }
+
+  void emitWith(const With& stmt) {
+    // TODO: support exprs
+    // emitExpr(stmt.generator());
   }
 
 

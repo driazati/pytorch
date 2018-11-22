@@ -104,3 +104,29 @@ def weak_script_method(fn):
         "original_method": fn
     }
     return fn
+
+
+class disable_jit(object):
+    """Context-manager that disables jit compilation.
+
+    Any code inside a `with` block in this context will be ignored by the jit
+    and the resulting graph will look as if the code was not there at all. This
+    can be useful for models that need unsupported features for training but not
+    for inference.
+
+    Example::
+
+        @torch.jit.script
+        def fn(x):
+            with torch.disable_jit():
+                print("this is ignored in script")
+            return x
+    """
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+        return False
+
+    def __call__(self, func):
+        return func

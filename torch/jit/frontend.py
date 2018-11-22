@@ -325,6 +325,16 @@ class StmtBuilder(Builder):
         r = ctx.make_range(stmt.lineno, stmt.col_offset, stmt.col_offset + len("pass"))
         return Pass(r)
 
+    @staticmethod
+    def build_With(ctx, stmt):
+        r = ctx.make_range(stmt.lineno, stmt.col_offset, stmt.col_offset + len("with"))
+        if len(stmt.items) != 1:
+            raise NotSupportedError(r, "with statements with more than 1 item are not supported")
+
+        item_expr = stmt.items[0].context_expr.func
+        expr = build_expr(ctx, item_expr)
+        return With(r, build_expr(ctx, item_expr))
+
 
 class ExprBuilder(Builder):
     binop_map = {

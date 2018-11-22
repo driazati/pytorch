@@ -8557,6 +8557,25 @@ a")
             return foo, a, bar
         self.checkScript(foo, (torch.rand(2, 3), torch.rand(3)))
 
+    def test_with(self):
+        with self.assertRaisesRegex(torch.jit.frontend.NotSupportedError,
+                                    "with statements"):
+            @torch.jit.script
+            def fn(x):
+                with torch.no_grad():
+                    print("this is ignored in script")
+                return x + 2
+
+    def test_disable_jit(self):
+        def fn(x):
+            with torch.jit.disable_jit():
+                x = x + 100
+            return x + 2
+
+        fn_scripted = torch.jit.script(fn)
+        self.assertEqual(fn(torch.ones(1)), torch.ones(1) + 102)
+        self.assertEqual(fn_scripted(torch.ones(1)), torch.ones(1) + 2)
+
 
 class MnistNet(nn.Module):
     def __init__(self):
