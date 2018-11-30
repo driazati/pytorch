@@ -6,10 +6,11 @@ import numbers
 
 from .module import Module
 from ..parameter import Parameter
-from ..utils.rnn import PackedSequence
+from ..utils.rnn import PackedSequence, is_packed_sequence
 from .. import init
+from .. import _VF
+from ..._jit_internal import weak_module, weak_script_method
 
-_VF = torch._C._VariableFunctions
 _rnn_impls = {
     'LSTM': _VF.lstm,
     'GRU': _VF.gru,
@@ -18,11 +19,14 @@ _rnn_impls = {
 }
 
 
+@weak_module
 class RNNBase(Module):
+    __constants__ = ['mode', 'input_size', 'hidden_size', 'num_layers', 'bias',
+                     'batch_first', 'dropout', 'bidirectional', '_flat_weights', 'w', 'training']
 
     def __init__(self, mode, input_size, hidden_size,
                  num_layers=1, bias=True, batch_first=False,
-                 dropout=0, bidirectional=False):
+                 dropout=0., bidirectional=False):
         super(RNNBase, self).__init__()
         self.mode = mode
         self.input_size = input_size
@@ -80,6 +84,8 @@ class RNNBase(Module):
         self.flatten_parameters()
         self.reset_parameters()
 
+        self.w = self._flat_weights
+
     def flatten_parameters(self):
         """Resets parameter data pointer so that they can use faster code paths.
 
@@ -122,69 +128,85 @@ class RNNBase(Module):
         for weight in self.parameters():
             init.uniform_(weight, -stdv, stdv)
 
-    def check_forward_args(self, input, hidden, batch_sizes):
-        is_input_packed = batch_sizes is not None
-        expected_input_dim = 2 if is_input_packed else 3
-        if input.dim() != expected_input_dim:
-            raise RuntimeError(
-                'input must have {} dimensions, got {}'.format(
-                    expected_input_dim, input.dim()))
-        if self.input_size != input.size(-1):
-            raise RuntimeError(
-                'input.size(-1) must be equal to input_size. Expected {}, got {}'.format(
-                    self.input_size, input.size(-1)))
+    # @weak_script_method
+    # def check_hidden_size(self, hx, expected_hidden_size, msg='Expected hidden size {}, got {}'):
+    #     if tuple(hx.size()) != expected_hidden_size:
+    #         raise RuntimeError(msg.format(expected_hidden_size, tuple(hx.size())))
+    #
+    # @weak_script_method
+    # def check_forward_args(self, input, hidden, batch_sizes):
+        # type: (Tensor, Tensor, Optional[Tensor])
+        # is_input_packed = batch_sizes is not None
+        # expected_input_dim = 2 if is_input_packed else 3
+        # if input.dim() != expected_input_dim:
+        #     raise RuntimeError(
+        #         'input must have {} dimensions, got {}'.format(
+        #             expected_input_dim, input.dim()))
+        # if self.input_size != input.size(-1):
+        #     raise RuntimeError(
+        #         'input.size(-1) must be equal to input_size. Expected {}, got {}'.format(
+        #             self.input_size, input.size(-1)))
+        #
+        # if is_input_packed:
+        #     mini_batch = int(batch_sizes[0])
+        # else:
+        #     mini_batch = input.size(0) if self.batch_first else input.size(1)
+        #
+        # num_directions = 2 if self.bidirectional else 1
+        # expected_hidden_size = (self.num_layers * num_directions,
+        #                         mini_batch, self.hidden_size)
+        #
+        # if self.mode == 'LSTM':
+        #     self.check_hidden_size(hidden[0], expected_hidden_size,
+        #                       'Expected hidden[0] size {}, got {}')
+        #     self.check_hidden_size(hidden[1], expected_hidden_size,
+        #                       'Expected hidden[1] size {}, got {}')
+        # else:
+        #     self.check_hidden_size(hidden, expected_hidden_size)
 
-        if is_input_packed:
-            mini_batch = int(batch_sizes[0])
-        else:
-            mini_batch = input.size(0) if self.batch_first else input.size(1)
-
-        num_directions = 2 if self.bidirectional else 1
-        expected_hidden_size = (self.num_layers * num_directions,
-                                mini_batch, self.hidden_size)
-
-        def check_hidden_size(hx, expected_hidden_size, msg='Expected hidden size {}, got {}'):
-            if tuple(hx.size()) != expected_hidden_size:
-                raise RuntimeError(msg.format(expected_hidden_size, tuple(hx.size())))
-
-        if self.mode == 'LSTM':
-            check_hidden_size(hidden[0], expected_hidden_size,
-                              'Expected hidden[0] size {}, got {}')
-            check_hidden_size(hidden[1], expected_hidden_size,
-                              'Expected hidden[1] size {}, got {}')
-        else:
-            check_hidden_size(hidden, expected_hidden_size)
-
+    @weak_script_method
     def forward(self, input, hx=None):
-        is_packed = isinstance(input, PackedSequence)
+        # type: (Tuple[Tensor, Optional[Tensor]], Optional[Tensor]) -> Tuple[Tensor, Tensor]
+        is_packed = is_packed_sequence(input)
         if is_packed:
-            input, batch_sizes = input
+            input_tensor, batch_sizes = input
+            batch_sizes = torch.jit._unwrap_optional(batch_sizes)
             max_batch_size = int(batch_sizes[0])
         else:
             batch_sizes = None
-            max_batch_size = input.size(0) if self.batch_first else input.size(1)
+            input_tensor = torch.jit._unwrap_tuple(input)
+            max_batch_size = input_tensor.size(0) if self.batch_first else input_tensor.size(1)
 
         if hx is None:
             num_directions = 2 if self.bidirectional else 1
-            hx = input.new_zeros(self.num_layers * num_directions,
-                                 max_batch_size, self.hidden_size,
-                                 requires_grad=False)
-            if self.mode == 'LSTM':
-                hx = (hx, hx)
-
-        self.check_forward_args(input, hx, batch_sizes)
-        _impl = _rnn_impls[self.mode]
-        if batch_sizes is None:
-            result = _impl(input, hx, self._flat_weights, self.bias, self.num_layers,
-                           self.dropout, self.training, self.bidirectional, self.batch_first)
+            hx = torch.zeros((self.num_layers * num_directions,
+                             max_batch_size, self.hidden_size),
+                             dtype=input_tensor.dtype) # TODO: requires_grad
         else:
-            result = _impl(input, batch_sizes, hx, self._flat_weights, self.bias,
-                           self.num_layers, self.dropout, self.training, self.bidirectional)
-        output = result[0]
-        hidden = result[1:] if self.mode == 'LSTM' else result[1]
+            hx = torch.jit._unwrap_optional(hx)
+            # if self.mode == 'LSTM': # TODO: lstm support
+            #     hx = (hx, hx)
+        a = torch.jit.annotate(List[torch.Tensor], [])
+        a.append(input_tensor)
+        # self.check_forward_args(input_tensor, hx, batch_sizes)
+        # _impl = _rnn_impls[self.mode]
+        # if batch_sizes is None:
+        # if self.mode == 'GRU':
+            # result = _VF.gru(input_tensor, hx, a, self.bias, self.num_layers,
+            #                  self.dropout, self.training, self.bidirectional, self.batch_first)
+        #     else:
+        #         result = input
+        #         raise Exception
+        # else:
 
-        if is_packed:
-            output = PackedSequence(output, batch_sizes)
+        result = _VF.gru(input_tensor, torch.jit._unwrap_optional(batch_sizes), hx, a, self.bias,
+                       self.num_layers, self.dropout, self.training, self.bidirectional)
+        output = result[0]
+        hidden = result[1]
+        # hidden = result[1:] if self.mode == 'LSTM' else result[1]
+
+        # if is_packed:
+        #     output = PackedSequence(output, batch_sizes)
         return output, hidden
 
     def extra_repr(self):
@@ -438,6 +460,7 @@ class LSTM(RNNBase):
         super(LSTM, self).__init__('LSTM', *args, **kwargs)
 
 
+@weak_module
 class GRU(RNNBase):
     r"""Applies a multi-layer gated recurrent unit (GRU) RNN to an input sequence.
 

@@ -275,3 +275,7 @@ def pack_sequence(sequences):
         a :class:`PackedSequence` object
     """
     return pack_padded_sequence(pad_sequence(sequences), [v.size(0) for v in sequences])
+
+
+def is_packed_sequence(input):
+    return isinstance(input, PackedSequence)

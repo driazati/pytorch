@@ -11,6 +11,7 @@ from .._jit_internal import createResolutionCallback, _compiled_weak_fns, \
     COMPILATION_PENDING, _boolean_dispatched
 from ..nn.modules.utils import _single, _pair, _triple, _quadruple, \
     _list_with_default
+from ..nn.utils.rnn import is_packed_sequence
 import torch.testing
 from collections import defaultdict, OrderedDict, namedtuple
 import sys
@@ -639,6 +640,8 @@ class CompilationUnit(object):
 
 
 def _try_get_dispatched_fn(fn):
+    if not callable(fn):
+        return None
     return _boolean_dispatched.get(fn)
 
 
@@ -1363,6 +1366,10 @@ def _unwrap_optional(x):
     return x
 
 
+def _unwrap_tuple(x):
+    return x
+
+
 # lazily built to ensure the correct initialization order
 def _get_builtin_table():
     global _builtin_table
@@ -1387,6 +1394,8 @@ def _get_builtin_table():
     _builtin_table[id(_unwrap_optional)] = "aten::_unwrap_optional"
     _builtin_table[id(cudnn.is_acceptable)] = "aten::cudnn_is_acceptable"
     _builtin_table[id(torch._C._infer_size)] = "aten::_infer_size"
+    _builtin_table[id(is_packed_sequence)] = "aten::_is_packed_sequence"
+    _builtin_table[id(_unwrap_tuple)] = "aten::_unwrap_tuple"
 
     return _builtin_table
 

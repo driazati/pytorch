@@ -25,15 +25,23 @@ RegisterOperators reg({
         }),
     Operator(
         "aten::Size(int[] sizes) -> int[]",
-        [](Stack& stack) {
-          return 0;
-        }),
+        [](Stack& stack) { return 0; }),
     Operator(
         "aten::size(Tensor self) -> int[]",
         [](Stack& stack) {
           autograd::profiler::RecordFunction record("sizes");
           auto result = (std::move(pop(stack))).toTensor().sizes();
           pack(stack, std::move(result));
+          return 0;
+        }),
+    Operator(
+        "aten::size(Tensor self, int dim) -> int[]",
+        [](Stack& stack) {
+          autograd::profiler::RecordFunction record("sizes");
+          auto sizes = (std::move(pop(stack))).toTensor().sizes();
+          auto dim = pop(stack).toInt();
+          JIT_ASSERT(dim >= 0 && dim < sizes.size());
+          pack(stack, std::move(sizes[dim]));
           return 0;
         }),
     Operator(
@@ -94,7 +102,38 @@ RegisterOperators reg({
             push(stack, at::infer_size(a, b));
             return 0;
           };
-        })
+        }),
+    Operator(
+        // "aten::_is_packed_seqeunce(Tensor[] a) -> bool",
+        FunctionSchema(
+            "aten::_is_packed_sequence",
+            {Argument("a", TupleType::create({
+              DynamicType::get(), OptionalType::create(DynamicType::get())}))},
+            {Argument("", BoolType::get())}),
+        [](const Node* node) {
+          return [](Stack& stack) {
+            auto tuple = pop(stack).toTuple()->elements();
+            JIT_ASSERT(tuple.size() == 2);
+            push(stack, false);
+            return 0;
+          };
+        }),
+    Operator(
+        // "aten::_is_packed_seqeunce(Tensor[] a) -> bool",
+        FunctionSchema(
+            "aten::_unwrap_tuple",
+            {Argument("a", TupleType::create({
+              DynamicType::get(), OptionalType::create(DynamicType::get())}))},
+            {Argument("", DynamicType::get())}),
+        [](const Node* node) {
+          return [](Stack& stack) {
+            auto tuple = pop(stack).toTuple()->elements();
+            JIT_ASSERT(tuple.size() == 2);
+            drop(stack, 1);
+            push(stack, tuple[0]);
+            return 0;
+          };
+        }),
 });
 }
 } // namespace jit

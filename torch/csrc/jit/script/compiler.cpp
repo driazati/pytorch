@@ -806,7 +806,14 @@ Value* emitBuiltinCall(
     return nullptr;
   }
   if(variants.size() == 0) {
-    throw ErrorReport(loc) << "unknown builtin op";
+    std::stringstream types;
+
+    for (auto arg : inputs) {
+      types << arg.value(graph)->type()->str() << " ";
+    }
+
+    throw ErrorReport(loc) << "unknowsn builtin op for call "
+                           << name.toQualString() << ": " << types.str();
   }
   throw ErrorReport(loc) << "arguments for call are not valid:\n"
                          << prefixLine(failure_messages.str(), "  ")
