@@ -4,7 +4,7 @@
 #include <c10/core/Allocator.h>
 #include "ATen/core/Deprecated.h"
 #include "ATen/core/Generator.h"
-#include "ATen/core/Layout.h"
+#include <c10/core/Layout.h>
 #include <c10/core/Scalar.h>
 #include <c10/core/ScalarType.h>
 #include "ATen/core/SparseTensorRef.h"
@@ -106,7 +106,7 @@ struct CAFFE2_API Type {
     return backendToDeviceType(backend());
   }
 
-  virtual Tensor copy(const Tensor & src, bool non_blocking=false, optional<Device> to_device={}) const = 0;
+  virtual Tensor copy(const Tensor & src, bool non_blocking=false, c10::optional<Device> to_device={}) const = 0;
   virtual Tensor & copy_(Tensor & self, const Tensor & src, bool non_blocking=false) const = 0;
 
   virtual void backward(
