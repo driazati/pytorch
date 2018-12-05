@@ -836,6 +836,7 @@ class OrderedParameterDict(OrderedDictWrapper):
         return self.module._has_parameter(k)
 
     def __getitem__(self, k):
+        print(self.items())
         if k not in self:
             raise KeyError(k)
         return self.module._get_parameter(k)
@@ -1076,6 +1077,7 @@ if _enabled:
                     return self._get_method(attr)
             if attr == 'graph' and self._has_method('forward'):
                 return self.__getattr__('forward').graph
+            print("getting params", attr)
             return Module.__getattr__(self, attr)
 
         def __setattr__(self, attr, value):
@@ -1137,6 +1139,7 @@ if _enabled:
         def __getattr__(self, attr):
             # Try to get the attribute directly, if that fails, fall back to the
             # weak module itself
+            print("getting", attr)
             try:
                 return ScriptModule.__getattr__(self, attr)
             except AttributeError:
