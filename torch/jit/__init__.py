@@ -859,7 +859,6 @@ class OrderedParameterDict(OrderedDictWrapper):
         return self.module._has_parameter(k)
 
     def __getitem__(self, k):
-        print(self.items())
         if k not in self:
             raise KeyError(k)
         return self.module._get_parameter(k)
@@ -1175,7 +1174,6 @@ if _enabled:
         def __getattr__(self, attr):
             # Try to get the attribute directly, if that fails, fall back to the
             # weak module itself
-            print("getting", attr)
             try:
                 return ScriptModule.__getattr__(self, attr)
             except AttributeError:
