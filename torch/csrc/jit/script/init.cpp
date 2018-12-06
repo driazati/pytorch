@@ -203,38 +203,13 @@ struct VISIBILITY_HIDDEN ParameterListValue : public SugaredValue {
     return "parameter list";
   }
 
-  // select an attribute on it, e.g. `this.field`
-  // std::shared_ptr<SugaredValue> attr(SourceRange loc, Method & m, const std::string& field) override {
-  //
-  // }
-
-  // call _parameters.values()
-  // std::shared_ptr<SugaredValue> call(SourceRange loc, Method & caller, at::ArrayRef<NamedValue> inputs, at::ArrayRef<NamedValue> attributes, size_t n_binders) override {
-  //   std::vector<Value*> params;
-  //   std::cout << "nt y y y y y y y y y\n";
-  //   // auto py_param_list = py::getattr(self, "_parameters").attr("items")();
-  //   // std::vector<py::tuple> param_list = py::cast<std::vector<py::tuple>>(py_param_list);
-  //   // for (auto param : param_list) {
-  //   //   std::cout << "Adding " << py::str(param) << "\n";
-  //   //   std::cout << "Adding " << py::str(param[0]) << "\n";
-  //   //   auto v = module->find_parameter(py::str(param[0]));
-  //   //   // auto f = std::make_shared<SimpleValue>(m.get_or_add_parameter(v->slot()));
-  //   //
-  //   //   params.push_back(caller.get_or_add_parameter(v->slot()));
-  //   // }
-  //   // auto list = caller.graph()->createList(DynamicType::get(), params);
-  //   // caller.graph()->insertNode(list);
-  //   // std::cout << " added the list\n";
-  //   // std::cout << *(caller.graph()) << "\n";
-  //   return std::make_shared<SimpleValue>(list->output());
-  // }
-
   Value* asValue(
       SourceRange loc,
       Method& m) override {
       std::vector<Value*> params;
       const auto& param_list = module->get_parameters();
       auto list_it = param_list.end() - 1;
+      // Add in reverse
       while (true) {
         params.push_back(m.get_or_add_parameter((*list_it)->slot()));
         if (list_it == param_list.begin()) {
@@ -242,12 +217,8 @@ struct VISIBILITY_HIDDEN ParameterListValue : public SugaredValue {
         }
         list_it--;
       }
-      // for (const auto& param : param_list) {
-      // }
       auto list = m.graph()->createList(DynamicType::get(), params);
       m.graph()->insertNode(list);
-      std::cout << " added the list\n";
-      // std::cout << *(m.graph()) << "\n";
       return list->output();
   }
 
@@ -304,32 +275,9 @@ struct ModuleValue : public SugaredValue {
     // python method. If so return this as a python value.
     py::object py_module = py::cast(module);
 
-    std::cout << "Getting field " << field << "\n";
+    // TODO: generalize
     if (field == "_flat_weights") {
-    // if (py::isinstance(py::getattr(py_module, field.c_str()), py::module::import("torch.jit").attr("OrderedParameterDict"))) {
-      std::cout << "HAVE PARAM LIST \n";
-      // if (field == "values") {
       return std::make_shared<ParameterListValue>(module);
-      // }
-      // // Add params as graph inputs, convert outputs to list, return list
-      // std::vector<Value*> params;
-      // auto py_param_list = py::getattr(py_module, "_parameters").attr("items")();
-      // std::vector<py::tuple> param_list = py::cast<std::vector<py::tuple>>(py_param_list);
-      // for (auto param : param_list) {
-      //   std::cout << "Adding " << py::str(param) << "\n";
-      //   std::cout << "Adding " << py::str(param[0]) << "\n";
-      //   auto v = module->find_parameter(py::str(param[0]));
-      //   // auto f = std::make_shared<SimpleValue>(m.get_or_add_parameter(v->slot()));
-      //
-      //   params.push_back(m.get_or_add_parameter(v->slot()));
-      // }
-      // auto list = m.graph()->createList(DynamicType::get(), params);
-      // m.graph()->insertNode(list);
-      // std::cout << " added the list\n";
-      // std::cout << *(m.graph()) << "\n";
-      // return std::make_shared<SimpleValue>(list->output());
-    } else {
-      std::cout << "not dict\n";
     }
 
     if(py::object attr = py::getattr(py_module, field.c_str(), py::none())) {

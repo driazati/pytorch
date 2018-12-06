@@ -1100,7 +1100,6 @@ if _enabled:
                     return self._get_method(attr)
             if attr == 'graph' and self._has_method('forward'):
                 return self.__getattr__('forward').graph
-            print("getting params", attr)
             return Module.__getattr__(self, attr)
 
         def __setattr__(self, attr, value):

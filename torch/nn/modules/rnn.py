@@ -230,9 +230,6 @@ class RNNBase(Module):
 
     @property
     def _flat_weights(self):
-        print(list(self._parameters.values()))
-        for i in self._parameters.values():
-            print(i.data.dim())
         return list(self._parameters.values())
 
     @property
@@ -473,9 +470,6 @@ class LSTM(RNNBase):
             _hx = torch.jit._unwrap_optional(hx)
 
         self.check_forward_args(input_tensor, _hx, batch_sizes)
-        fw = self._flat_weights
-        print("CALLING WITH")
-        print(fw)
         if batch_sizes is None:
             result = _VF.lstm(input_tensor, _hx, self._flat_weights, self.bias, self.num_layers,
                               self.dropout, self.training, self.bidirectional, self.batch_first)
