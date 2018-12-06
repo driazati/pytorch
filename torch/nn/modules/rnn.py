@@ -6,10 +6,11 @@ import numbers
 
 from .module import Module
 from ..parameter import Parameter
-from ..utils.rnn import PackedSequence, is_packed_sequence
+from ..utils.rnn import PackedSequence, is_packed_sequence, get_packed_sequence
 from .. import init
 from .. import _VF
 from ..._jit_internal import weak_module, weak_script_method
+from typing import Optional
 
 _rnn_impls = {
     'LSTM': _VF.lstm,
@@ -448,17 +449,16 @@ class LSTM(RNNBase):
 
     @weak_script_method
     def forward(self, input, hx=None):
-        # type: (Tuple[Tensor, Optional[Tensor]], Optional[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tuple[Tensor, Tensor]]  # noqa
+        # type: (Tuple[Tensor, Optional[Tensor]], Optional[Tuple[Tensor, Tensor]]) -> Tuple[Tuple[Tensor, Optional[Tensor]], Tuple[Tensor, Tensor]]  # noqa
         is_packed = is_packed_sequence(input)
-        # if is_packed:
-        input_tensor, batch_sizes = input
-        batch_sizes = torch.jit._unwrap_optional(batch_sizes)
-        max_batch_size = int(batch_sizes[0])
-        # else:
-        #     # TODO: don't emit this branch
-            # input_tensor = torch.jit._unwrap_tuple(input)
-            # batch_sizes = None
-            # max_batch_size = input_tensor.size(0) if self.batch_first else input_tensor.size(1)
+        if is_packed:
+            input_tensor, batch_sizes = input
+            batch_sizes = torch.jit._unwrap_optional(batch_sizes)
+            max_batch_size = int(batch_sizes[0])
+        else:
+            input_tensor = torch.jit._unwrap_tuple(input)
+            batch_sizes = torch.jit.annotate(Optional[torch.Tensor], None)
+            max_batch_size = input_tensor.size(0) if self.batch_first else input_tensor.size(1)
 
         if hx is None:
             num_directions = 2 if self.bidirectional else 1
@@ -481,10 +481,10 @@ class LSTM(RNNBase):
         hidden = result[1:]
 
         if is_packed:
-            pass
-            # TODO: don't emit this branch
-            # output = PackedSequence(output, batch_sizes)
-        return output, hidden
+            _output = get_packed_sequence(output, batch_sizes)
+        else:
+            _output = torch.jit._wrap_tuple(output)
+        return _output, hidden
 
 
 @weak_module

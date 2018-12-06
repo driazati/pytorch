@@ -11,6 +11,10 @@ namespace torch {
 namespace jit {
 
 namespace {
+
+TypePtr packed_seqeuence = TupleType::create(
+    {DynamicType::get(), OptionalType::create(DynamicType::get())});
+
 RegisterOperators reg({
     Operator(
         "aten::split(Tensor self, int[] split_sizes, int dim=0) -> Tensor[]",
@@ -108,30 +112,51 @@ RegisterOperators reg({
         // "aten::_is_packed_seqeunce(Tensor[] a) -> bool",
         FunctionSchema(
             "aten::_is_packed_sequence",
-            {Argument("a", TupleType::create({
-              DynamicType::get(), OptionalType::create(DynamicType::get())}))},
+            {Argument("a", packed_seqeuence)},
             {Argument("", BoolType::get())}),
         [](const Node* node) {
           return [](Stack& stack) {
             auto tuple = pop(stack).toTuple()->elements();
             JIT_ASSERT(tuple.size() == 2);
-            push(stack, false);
+            push(stack, true);
             return 0;
           };
         }),
     Operator(
         // "aten::_is_packed_seqeunce(Tensor[] a) -> bool",
         FunctionSchema(
+            "aten::_get_packed_sequence",
+            {Argument("output", DynamicType::get()),
+              Argument("batch_size", DynamicType::get())},
+            {Argument("a", packed_seqeuence)}),
+        [](const Node* node) {
+          return [](Stack& stack) {
+            std::vector<IValue> values;
+            values.emplace_back(pop(stack).toTensor());
+            values.emplace_back(pop(stack).toTensor());
+            push(stack, values);
+            return 0;
+          };
+        }),
+    Operator(
+        FunctionSchema(
             "aten::_unwrap_tuple",
-            {Argument("a", TupleType::create({
-              DynamicType::get(), OptionalType::create(DynamicType::get())}))},
+            {Argument("a", packed_seqeuence)},
             {Argument("", DynamicType::get())}),
         [](const Node* node) {
           return [](Stack& stack) {
-            auto tuple = pop(stack).toTuple()->elements();
-            JIT_ASSERT(tuple.size() == 2);
-            drop(stack, 1);
-            push(stack, tuple[0]);
+            AT_ERROR("Cannot unwrap tuple");
+            return 0;
+          };
+        }),
+    Operator(
+        FunctionSchema(
+            "aten::_wrap_tuple",
+            {Argument("", DynamicType::get())},
+            {Argument("a", packed_seqeuence)}),
+        [](const Node* node) {
+          return [](Stack& stack) {
+            AT_ERROR("Cannot wrap tuple");
             return 0;
           };
         }),
