@@ -22,7 +22,7 @@ _rnn_impls = {
 @weak_module
 class RNNBase(Module):
     __constants__ = ['mode', 'input_size', 'hidden_size', 'num_layers', 'bias',
-                     'batch_first', 'dropout', 'bidirectional', '_flat_weights', 'w', 'training']
+                     'batch_first', 'dropout', 'bidirectional']
 
     def __init__(self, mode, input_size, hidden_size,
                  num_layers=1, bias=True, batch_first=False,
@@ -230,6 +230,9 @@ class RNNBase(Module):
 
     @property
     def _flat_weights(self):
+        print(list(self._parameters.values()))
+        for i in self._parameters.values():
+            print(i.data.dim())
         return list(self._parameters.values())
 
     @property
@@ -442,34 +445,23 @@ class LSTM(RNNBase):
         >>> c0 = torch.randn(2, 3, 20)
         >>> output, (hn, cn) = rnn(input, (h0, c0))
     """
-    # __constants__ = ['flat_we', 'bias', 'num_layers', 'dropout', 'bidirectional', 'batch_first']
-    __constants__ = ['mode', 'input_size', 'hidden_size', 'num_layers', 'bias',
-                     'batch_first', 'dropout', 'bidirectional', '_flat_weights', 'training']
 
     def __init__(self, *args, **kwargs):
         super(LSTM, self).__init__('LSTM', *args, **kwargs)
-        a = []
-        for v in self._parameters.values():
-            a.append(v.data)
-        x = tuple(a)
-        print(x)
-        self.flat_we = a
-        for i in self._parameters:
-            print(i)
 
     @weak_script_method
     def forward(self, input, hx=None):
         # type: (Tuple[Tensor, Optional[Tensor]], Optional[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, Tuple[Tensor, Tensor]]  # noqa
         is_packed = is_packed_sequence(input)
-        if is_packed:
-            pass
+        # if is_packed:
         input_tensor, batch_sizes = input
         batch_sizes = torch.jit._unwrap_optional(batch_sizes)
         max_batch_size = int(batch_sizes[0])
         # else:
         #     # TODO: don't emit this branch
-        #     batch_sizes = None
-        #     max_batch_size = input.size(0) if self.batch_first else input.size(1)
+            # input_tensor = torch.jit._unwrap_tuple(input)
+            # batch_sizes = None
+            # max_batch_size = input_tensor.size(0) if self.batch_first else input_tensor.size(1)
 
         if hx is None:
             num_directions = 2 if self.bidirectional else 1
@@ -481,6 +473,9 @@ class LSTM(RNNBase):
             _hx = torch.jit._unwrap_optional(hx)
 
         self.check_forward_args(input_tensor, _hx, batch_sizes)
+        fw = self._flat_weights
+        print("CALLING WITH")
+        print(fw)
         if batch_sizes is None:
             result = _VF.lstm(input_tensor, _hx, self._flat_weights, self.bias, self.num_layers,
                               self.dropout, self.training, self.bidirectional, self.batch_first)
@@ -491,9 +486,10 @@ class LSTM(RNNBase):
         output = result[0]
         hidden = result[1:]
 
-        # if is_packed:
-        #     TODO: don't emit this branch
-        #     output = PackedSequence(output, batch_sizes)
+        if is_packed:
+            pass
+            # TODO: don't emit this branch
+            # output = PackedSequence(output, batch_sizes)
         return output, hidden
 
 
