@@ -472,26 +472,25 @@ def _unpool_output_size(input, kernel_size, stride, padding, output_size):
         default_size.append((input_size[d + 2] - 1) * stride[d] +
                             kernel_size[d] - 2 * padding[d])
     if output_size is None:
-        ret = default_size
-    else:
-        output_size = torch.jit._unwrap_optional(output_size)
-        if len(output_size) == len(kernel_size) + 2:
-            output_size = output_size[2:]
-        if len(output_size) != len(kernel_size):
-            raise ValueError("output_size should be a sequence containing "
-                             "{} or {} elements, but it has a length of '{}'"
-                             .format(len(kernel_size), len(kernel_size) + 2,
-                                     len(output_size)))
-        for d in range(len(kernel_size)):
-            min_size = default_size[d] - stride[d]
-            max_size = default_size[d] + stride[d]
-            if not (min_size < output_size[d] < max_size):
-                raise ValueError(
-                    'invalid output_size "{}" (dim {} must be between {} and {})'
-                    .format(output_size, d, min_size, max_size))
+        return default_size
 
-        ret = output_size
-    return ret
+    output_size = torch.jit._unwrap_optional(output_size)
+    if len(output_size) == len(kernel_size) + 2:
+        output_size = output_size[2:]
+    if len(output_size) != len(kernel_size):
+        raise ValueError("output_size should be a sequence containing "
+                         "{} or {} elements, but it has a length of '{}'"
+                         .format(len(kernel_size), len(kernel_size) + 2,
+                                 len(output_size)))
+    for d in range(len(kernel_size)):
+        min_size = default_size[d] - stride[d]
+        max_size = default_size[d] + stride[d]
+        if not (min_size < output_size[d] < max_size):
+            raise ValueError(
+                'invalid output_size "{}" (dim {} must be between {} and {})'
+                .format(output_size, d, min_size, max_size))
+
+    return output_size
 
 
 @weak_script
@@ -1116,10 +1115,9 @@ def _get_softmax_dim(name, ndim, stacklevel):
     warnings.warn("Implicit dimension choice for {} has been deprecated. "
                   "Change the call to include dim=X as an argument.".format(name), stacklevel=stacklevel)
     if ndim == 0 or ndim == 1 or ndim == 3:
-        ret = 0
+        return 0
     else:
-        ret = 1
-    return ret
+        return 1
 
 
 @weak_script
@@ -1143,12 +1141,12 @@ def softmin(input, dim=None, _stacklevel=3, dtype=None):
         dim = _get_softmax_dim('softmin', input.dim(), _stacklevel)
     else:
         dim = torch.jit._unwrap_optional(dim)
+
     if dtype is None:
-        ret = (-input).softmax(dim)
-    else:
-        dtype = torch.jit._unwrap_optional(dtype)
-        ret = (-input).softmax(dim, dtype=dtype)
-    return ret
+        return (-input).softmax(dim)
+
+    dtype = torch.jit._unwrap_optional(dtype)
+    return (-input).softmax(dim, dtype=dtype)
 
 
 @weak_script
@@ -1184,11 +1182,10 @@ def softmax(input, dim=None, _stacklevel=3, dtype=None):
     else:
         dim = torch.jit._unwrap_optional(dim)
     if dtype is None:
-        ret = input.softmax(dim)
-    else:
-        dtype = torch.jit._unwrap_optional(dtype)
-        ret = input.softmax(dim, dtype=dtype)
-    return ret
+        return input.softmax(dim)
+
+    dtype = torch.jit._unwrap_optional(dtype)
+    return input.softmax(dim, dtype=dtype)
 
 
 @weak_script
@@ -1291,11 +1288,10 @@ def log_softmax(input, dim=None, _stacklevel=3, dtype=None):
     else:
         dim = torch.jit._unwrap_optional(dim)
     if dtype is None:
-        ret = input.log_softmax(dim)
-    else:
-        _dtype = torch.jit._unwrap_optional(dtype)
-        ret = input.log_softmax(dim, dtype=_dtype)
-    return ret
+        return input.log_softmax(dim)
+
+    _dtype = torch.jit._unwrap_optional(dtype)
+    return input.log_softmax(dim, dtype=_dtype)
 
 
 softshrink = _add_docstr(torch._C._nn.softshrink, r"""
@@ -1348,13 +1344,12 @@ def linear(input, weight, bias=None):
     """
     if input.dim() == 2 and bias is not None:
         # fused op is marginally faster
-        ret = torch.addmm(torch.jit._unwrap_optional(bias), input, weight.t())
-    else:
-        output = input.matmul(weight.t())
-        if bias is not None:
-            output += torch.jit._unwrap_optional(bias)
-        ret = output
-    return ret
+        return torch.addmm(torch.jit._unwrap_optional(bias), input, weight.t())
+
+    output = input.matmul(weight.t())
+    if bias is not None:
+        output += torch.jit._unwrap_optional(bias)
+    return output
 
 
 @weak_script
@@ -1786,28 +1781,27 @@ def nll_loss(input, target, weight=None, size_average=None, ignore_index=-100,
         raise ValueError('Expected input batch_size ({}) to match target batch_size ({}).'
                          .format(input.size(0), target.size(0)))
     if dim == 2:
-        ret = torch._C._nn.nll_loss(input, target, weight, _Reduction.get_enum(reduction), ignore_index)
-    elif dim == 4:
-        ret = torch._C._nn.nll_loss2d(input, target, weight, _Reduction.get_enum(reduction), ignore_index)
+        return torch._C._nn.nll_loss(input, target, weight, _Reduction.get_enum(reduction), ignore_index)
+    if dim == 4:
+        return torch._C._nn.nll_loss2d(input, target, weight, _Reduction.get_enum(reduction), ignore_index)
+
+    # dim == 3 or dim > 4
+    n = input.size(0)
+    c = input.size(1)
+    out_size = (n,) + input.size()[2:]
+    if target.size()[1:] != input.size()[2:]:
+        raise ValueError('Expected target size {}, got {}'.format(
+            out_size, target.size()))
+    input = input.contiguous().view(n, c, 1, -1)
+    target = target.contiguous().view(n, 1, -1)
+    reduction_enum = _Reduction.get_enum(reduction)
+    if reduction is not 'none':
+        return torch._C._nn.nll_loss2d(
+            input, target, weight, reduction_enum, ignore_index)
     else:
-        # dim == 3 or dim > 4
-        n = input.size(0)
-        c = input.size(1)
-        out_size = (n,) + input.size()[2:]
-        if target.size()[1:] != input.size()[2:]:
-            raise ValueError('Expected target size {}, got {}'.format(
-                out_size, target.size()))
-        input = input.contiguous().view(n, c, 1, -1)
-        target = target.contiguous().view(n, 1, -1)
-        reduction_enum = _Reduction.get_enum(reduction)
-        if reduction is not 'none':
-            ret = torch._C._nn.nll_loss2d(
-                input, target, weight, reduction_enum, ignore_index)
-        else:
-            out = torch._C._nn.nll_loss2d(
-                input, target, weight, reduction_enum, ignore_index)
-            ret = out.view(out_size)
-    return ret
+        out = torch._C._nn.nll_loss2d(
+            input, target, weight, reduction_enum, ignore_index)
+        return out.view(out_size)
 
 
 @weak_script
