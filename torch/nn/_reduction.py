@@ -9,18 +9,17 @@ import torch
 def get_enum(reduction):
     # type: (str) -> int
     if reduction == 'none':
-        ret = 0
+        return 0
     elif reduction == 'mean':
-        ret = 1
+        return 1
     elif reduction == 'elementwise_mean':
         warnings.warn("reduction='elementwise_mean' is deprecated, please use reduction='mean' instead.")
-        ret = 1
+        return 1
     elif reduction == 'sum':
-        ret = 2
+        return 2
     else:
-        ret = -1  # TODO: remove once JIT exceptions support control flow
         raise ValueError(reduction + " is not a valid value for reduction")
-    return ret
+        return -1  # TODO: remove once JIT exceptions support control flow
 
 # In order to support previous versions, accept boolean size_average and reduce
 # and convert them into the new constants for now

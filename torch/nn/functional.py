@@ -1849,13 +1849,13 @@ def poisson_nll_loss(input, target, log_input=True, full=False, size_average=Non
     if full:
         mask = target > 1
         loss[mask] += (target * torch.log(target) - target + 0.5 * torch.log(2 * math.pi * target))[mask]
+
     if reduction is 'none':
-        ret = loss
+        return loss
     if reduction is 'mean':
-        ret = torch.mean(loss)
-    else:
-        ret = torch.sum(loss)
-    return ret
+        return torch.mean(loss)
+
+    return torch.sum(loss)
 
 
 @weak_script
@@ -2098,14 +2098,19 @@ def smooth_l1_loss(input, target, size_average=None, reduce=None, reduction='mea
     """
     if size_average is not None or reduce is not None:
         reduction = _Reduction.legacy_get_string(size_average, reduce)
+
     if target.requires_grad:
-        ret = _smooth_l1_loss(input, target)
-        if reduction != 'none':
-            ret = torch.mean(ret) if reduction == 'mean' else torch.sum(ret)
-    else:
-        expanded_input, expanded_target = torch.broadcast_tensors(input, target)
-        ret = torch._C._nn.smooth_l1_loss(expanded_input, expanded_target, _Reduction.get_enum(reduction))
-    return ret
+        result = _smooth_l1_loss(input, target)
+        if reduction == 'none':
+            return result
+        if reduction == 'mean':
+            return torch.mean(result)
+        if reduction == 'sum':
+            return torch.sum(result)
+        raise ValueError(reduction + " is not a valid value for reduction")
+
+    expanded_input, expanded_target = torch.broadcast_tensors(input, target)
+    return torch._C._nn.smooth_l1_loss(expanded_input, expanded_target, _Reduction.get_enum(reduction))
 
 
 @weak_script
