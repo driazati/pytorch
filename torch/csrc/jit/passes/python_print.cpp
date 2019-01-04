@@ -16,6 +16,9 @@ static bool isPrint(char s) {
   return s > 0x1f && s < 0x7f;
 }
 
+std::stringstream nullstream;
+// nullstream.setstate(std::ios::failbit);
+
 void printQuotedString(std::ostream& stmt, const std::string& str) {
   stmt << "\"";
   for (auto s : str) {
@@ -83,6 +86,28 @@ static bool isValidIdentifier(const std::string& name) {
   }
   return true;
 }
+
+struct SourceMapWriter : std::ostream {
+  std::ostream& out_;
+
+  // Will match `out_writer_` in length, if possible, each line will be the
+  // correpsonding line (to the generated Python) in the source code. If the
+  // original line could not be recovered, then the line will be blank.
+  std::ostream& source_map_;
+
+  SourceMapWriter(std::ostream& out, std::ostream& source_map)
+      : out_(out), source_map_(source_map) {}
+
+  std::ostream& operator<<(std::string s) {
+    out_ << s;
+    return *this;
+  }
+
+  std::ostream& operator<<(const char* s) {
+    out_ << s;
+    return *this;
+  }
+};
 
 // handles names of the form, e.g., self.a.b
 // if a field is not a valid identifier, then it will print as, e.g.
@@ -194,19 +219,20 @@ const static std::unordered_set<std::string> reserved_names = {
 };
 
 struct PythonPrintPass {
-  std::ostream& out;
+  SourceMapWriter out_writer_;
 
   // constants are written to this table, and given then named CONSTANTS.cN
   // where N is the index into this table.
-
   std::vector<at::Tensor>& tensor_table_;
-  // When printing this node, is it safe to write it inline (i.e. without
+  // When printing this node, is it safe to write it inline (i.e. without_writer_
   // assigning a temporary variable
   std::unordered_set<Node*> output_inline_;
 
   // when we print this, should we error if the resulting output would
   // not be able to be reparsed?
   bool enforce_importable_;
+
+
 
   // what valid identifiers are in use for the current function
   std::unordered_set<std::string> used_names_;
@@ -253,7 +279,7 @@ struct PythonPrintPass {
   bool canInline(Value* v) {
     Node* n = v->node();
     // there must be only 1 values, otherwise we need an assignment to handle
-    // the multiple outout values
+    // the multiple out_writer_out_writer_ values
     if (n->outputs().size() != 1)
       return false;
     // if it is used more than once, then we need a variable
@@ -329,7 +355,7 @@ struct PythonPrintPass {
   size_t getOrAddTensorConstant(at::Tensor t) {
     // XXX - N^2 warning. This code does the exact same thing as
     // ConstantPool, which is also N^2 in the size of the constants,
-    // because it doesn't hash any information about the tensors.
+    // because it doesn't hash any information about_writer_ the tensors.
     // We will probably need to optimize this at some point using hashing.
     for (size_t i = 0; i < tensor_table_.size(); ++i) {
       if (t.type() == tensor_table_[i].type() && t.equal(tensor_table_[i])) {
@@ -427,9 +453,9 @@ struct PythonPrintPass {
   // indent to the current indent level
   std::ostream& indent() {
     for (size_t i = 0; i < level; ++i) {
-      out << "  ";
+      out_writer_ << "  ";
     }
-    return out;
+    return out_writer_;
   }
 
   ResourceGuard WithIndented() {
@@ -470,10 +496,10 @@ struct PythonPrintPass {
   void printAssignment(at::ArrayRef<Value*> lhs, at::ArrayRef<Value*> rhs) {
     if (lhs.size() > 0) {
       indent();
-      printValueList(out, lhs);
-      out << " = ";
-      printValueList(out, rhs);
-      out << "\n";
+      printValueList(out_writer_, lhs);
+      out_writer_ << " = ";
+      printValueList(out_writer_, rhs);
+      out_writer_ << "\n";
     }
   }
 
@@ -496,7 +522,7 @@ struct PythonPrintPass {
 
   // our way of encoding loops makes them difficult to turn back into python
   // syntax. we have to check properties of the condition and trip count inputs
-  // to figure out which one it initially was
+  // to figure out_writer_ which one it initially was
   static bool shouldEmitAsForLoop(LoopView stmt) {
     auto trip_count = toIValue(stmt.maxTripCount());
     auto cond_input = toIValue(stmt.inputCond());
@@ -549,14 +575,14 @@ struct PythonPrintPass {
     // Loop header
     if (emit_as_for_loop) {
       indent();
-      out << "for " << useOf(stmt.currentTripCount()) << " in range("
+      out_writer_ << "for " << useOf(stmt.currentTripCount()) << " in range("
           << useOf(stmt.maxTripCount()) << "):\n";
     } else {
       // note: trip_count_in_block is unused because this is a while loop,
       // so we reuse the Value* as a stand-in for the loop condition
       printAssignment(stmt.currentTripCount(), stmt.inputCond());
       indent();
-      out << "while " << useOf(stmt.currentTripCount()) << ":\n";
+      out_writer_ << "while " << useOf(stmt.currentTripCount()) << ":\n";
     }
     // Loop body
     {
@@ -585,9 +611,9 @@ struct PythonPrintPass {
         }
         if (node->inputs().size() > 0) {
           indent();
-          out << "return ";
-          printValueList(out, node->inputs());
-          out << "\n";
+          out_writer_ << "return ";
+          printValueList(out_writer_, node->inputs());
+          out_writer_ << "\n";
         }
         break;
       case prim::Loop:
@@ -605,9 +631,9 @@ struct PythonPrintPass {
         // a, b, = unpacked
         // a, = unpacked # trailing comma forces an unpack to happen
         if (node->outputs().size() > 0) {
-          printValueList(out, node->outputs(), "", ", = ");
+          printValueList(out_writer_, node->outputs(), "", ", = ");
         }
-        out << useOf(node->input()) << "\n";
+        out_writer_ << useOf(node->input()) << "\n";
         break;
       default:
 
@@ -626,10 +652,10 @@ struct PythonPrintPass {
         indent();
         // Print outputs
         if (node->outputs().size() > 0) {
-          printValueList(out, node->outputs());
-          out << " = ";
+          printValueList(out_writer_, node->outputs());
+          out_writer_ << " = ";
         }
-        out << ss.str() << "\n";
+        out_writer_ << ss.str() << "\n";
     }
   }
 
@@ -712,7 +738,7 @@ struct PythonPrintPass {
         // can be recovered on parsing. It cannot be recovered if it will be
         // matched to schema with free variables. If it is used only in places
         // where there is schema and the scheme has no free variables, then we
-        // can recover it without annotation. Otherwise, we annotate None with
+        // can recover it without_writer_ annotation. Otherwise, we annotate None with
         // the right optional type
         const auto& uses = node->output()->uses();
         bool all_usable_schema =
@@ -842,12 +868,12 @@ struct PythonPrintPass {
     if (!block_has_other_statements &&
         root->nodes().begin() == root->nodes().end()) {
       indent();
-      out << "pass\n";
+      out_writer_ << "pass\n";
     }
     for (auto* node : root->nodes()) {
       printNode(node, /*print_const=*/false);
     }
-    return out;
+    return out_writer_;
   }
 
   void printDefaultValue(
@@ -892,7 +918,7 @@ struct PythonPrintPass {
 
     // last param_names.size() arguments to the graph are parameters and not
     // actual inputs, we will print these as, e.g. self.foo.bar
-    // while we print the true_inputs out as parameters
+    // while we print the true_inputs out_writer_ as parameters
     auto true_inputs =
         graph.inputs().slice(0, graph.inputs().size() - param_names.size());
     auto param_names_it = param_names.begin();
@@ -900,14 +926,14 @@ struct PythonPrintPass {
       assignValue(param, *param_names_it++);
     }
     assignValuesToTheirUniqueNames(true_inputs);
-    out << "def " << name << "(self";
+    out_writer_ << "def " << name << "(self";
     auto defaults_offset = defaults.begin();
     for (auto input : true_inputs) {
-      out << ",\n    " << useOf(input) << ": " << input->type()->python_str();
+      out_writer_ << ",\n    " << useOf(input) << ": " << input->type()->python_str();
       if (defaults_offset != defaults.end()) {
         const c10::optional<IValue>& def = *defaults_offset++;
         if (def) {
-          printDefaultValue(input->type(), out, *def);
+          printDefaultValue(input->type(), out_writer_, *def);
         }
       }
     }
@@ -915,7 +941,7 @@ struct PythonPrintPass {
     // have we use all the provided defaults?
     JIT_ASSERT(defaults_offset == defaults.end());
 
-    out << ") -> " << resultType(graph)->python_str() << ":\n";
+    out_writer_ << ") -> " << resultType(graph)->python_str() << ":\n";
     {
       auto guard = WithIndented();
       // Print initial constant table (most are just inlined into their use,
@@ -932,12 +958,13 @@ struct PythonPrintPass {
 
  public:
   PythonPrintPass(
-      std::ostream& out_,
+      std::ostream& out,
       std::vector<at::Tensor>& tensor_table,
-      bool enforce_importable)
-      : out(out_),
+      bool enforce_importable,
+      std::ostream& source_map)
+      : out_writer_(out, source_map),
         tensor_table_(tensor_table),
-        enforce_importable_(enforce_importable) {}
+        enforce_importable_(enforce_importable) { }
 
   // TODO: we should consider forcing functions to return a single value
   // instead of handling this tuple logic both in the compiler and the printer
@@ -957,7 +984,7 @@ struct PythonPrintPass {
       const std::vector<std::string>& param_names = {}) {
     printFunctionDefinition(graph, name, defaults, param_names);
     while (!worklist.empty()) {
-      out << "\n\n";
+      out_writer_ << "\n\n";
       auto work = worklist.back();
       worklist.pop_back();
       work();
@@ -1006,8 +1033,9 @@ TORCH_API void PythonPrint(
     std::ostream& out,
     const Graph& graph,
     std::vector<at::Tensor>& tensor_table,
-    bool enforce_importable) {
-  PythonPrintPass pp(out, tensor_table, enforce_importable);
+    bool enforce_importable,
+    std::ostream& source_map) {
+  PythonPrintPass pp(out, tensor_table, enforce_importable, source_map);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
   pp.printFunction(const_cast<Graph&>(graph), "graph");
 }
@@ -1016,8 +1044,9 @@ TORCH_API void PythonPrint(
     std::ostream& out,
     const script::Method& method,
     std::vector<at::Tensor>& tensor_table,
-    bool enforce_importable) {
-  PythonPrintPass pp(out, tensor_table, enforce_importable);
+    bool enforce_importable,
+    std::ostream& source_map) {
+  PythonPrintPass pp(out, tensor_table, enforce_importable, source_map);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
   pp.printMethod(const_cast<script::Method&>(method));
 }
@@ -1026,8 +1055,9 @@ TORCH_API void PythonPrint(
     std::ostream& out,
     const script::Module& module,
     std::vector<at::Tensor>& tensor_table,
-    bool enforce_importable) {
-  PythonPrintPass pp(out, tensor_table, enforce_importable);
+    bool enforce_importable,
+    std::ostream& source_map) {
+  PythonPrintPass pp(out, tensor_table, enforce_importable, source_map);
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
   pp.printModule(const_cast<script::Module&>(module));
 }
@@ -1037,7 +1067,7 @@ TORCH_API bool printerHasSpecialCaseFor(Symbol sym) {
   // that you have also added special handling of this symbol to
   // the printer above. Not adding handling will cause import and export
   // of modules with this new operator to fail. This is only required
-  // for operators without schema. Prefer registering your operator with
+  // for operators without_writer_ schema. Prefer registering your operator with
   // schema to editing this list here. These cases should only be things
   // that require special handling because they do not fit normal schema
   const static std::unordered_set<Symbol> handled = {

@@ -4,29 +4,38 @@
 #include <iostream>
 #include <vector>
 
+
 namespace torch {
 namespace jit {
+
+// nullstream.setstate(std::ios::failbit);
+
 
 namespace script {
 struct Method;
 struct Module;
 } // namespace script
 
+extern std::stringstream nullstream;
+
 TORCH_API void PythonPrint(
     std::ostream& out,
     const Graph& graph,
     std::vector<at::Tensor>& tensor_table,
-    bool enforce_importable = false);
+    bool enforce_importable = false,
+    std::ostream& source_map = nullstream);
 TORCH_API void PythonPrint(
     std::ostream& out,
     const script::Method& graph,
     std::vector<at::Tensor>& tensor_table,
-    bool enforce_importable = false);
+    bool enforce_importable = false,
+    std::ostream& source_map = nullstream);
 TORCH_API void PythonPrint(
     std::ostream& out,
     const script::Module& module,
     std::vector<at::Tensor>& tensor_table,
-    bool enforce_importable = false);
+    bool enforce_importable = false,
+    std::ostream& source_map = nullstream);
 
 TORCH_API bool printerHasSpecialCaseFor(c10::Symbol sym);
 } // namespace jit
