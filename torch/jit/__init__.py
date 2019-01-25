@@ -1232,7 +1232,7 @@ if _enabled:
                                      "weak script module once it has been "
                                      "created".format(attr))
 else:
-    class ScriptModule(torch.nn.Module):
+    class ScriptModule(nice.nn.Module):
         def __init__(self, optimize=True):
             super(ScriptModule, self).__init__()
 
