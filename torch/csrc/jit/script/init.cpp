@@ -208,6 +208,32 @@ struct VISIBILITY_HIDDEN ConstantPythonTupleValue : public PythonValue {
   }
 };
 
+struct VISIBILITY_HIDDEN ConstantPythonDictValue : public PythonValue {
+  explicit ConstantPythonDictValue(py::object dict)
+      : PythonValue(std::move(dict)) {}
+
+  Value* asValue(const SourceRange& loc, Method& m) override {
+    std::vector<Value*> keys;
+    std::vector<Value*> values;
+    py::dict dict = self;
+    for (auto item : dict) {
+      keys.push_back(
+          toSugaredValue(
+              py::reinterpret_borrow<py::object>(item.first), m, loc, true)
+              ->asValue(loc, m));
+      auto val = py::reinterpret_borrow<py::object>(item.second);
+      std::string name = py::cast<std::string>(val);
+      auto v = m.owner().find_parameter(name);
+      Value* the_tensor = m.get_or_add_parameter(v->slot());
+      values.push_back(the_tensor);
+    }
+    // TODO: more types
+    auto node = m.graph()->createDict(
+        StringType::get(), DynamicType::get(), keys, values);
+    return m.graph()->insertNode(node)->output();
+  }
+};
+
 // defines how modules/methods behave inside the script subset.
 // for now this does not have any interaction with python.
 // in the future, we will add the ability to resolve `self.foo` to python
@@ -432,6 +458,8 @@ std::shared_ptr<SugaredValue> toSugaredValue(
       return toSimple(g.insertConstant(v, loc));
     } else if (py::isinstance<py::tuple>(obj)) {
       return std::make_shared<ConstantPythonTupleValue>(obj);
+    } else if (py::isinstance<py::dict>(obj)) {
+      return std::make_shared<ConstantPythonDictValue>(obj);
     }
   }
 

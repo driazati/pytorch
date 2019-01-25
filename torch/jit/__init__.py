@@ -790,6 +790,16 @@ def batch(batch_size=1, optimize=True, _frames_up=0):
 #  view.items()
 #  view.keys()
 #  len(view)
+class ConstantParameterDict(dict):
+    def __init__(self, module, name, the_dict):
+        for key in the_dict:
+            param_name = "{}_{}".format(name, key)
+            module.register_parameter(param_name, torch.nn.Parameter(the_dict[key]))
+            dict.__setitem__(self, key, param_name)
+
+    def __setitem__(self, k, v):
+        raise NotImplementedError
+
 
 class OrderedDictWrapper(object):
     def __init__(self, module):
@@ -898,8 +908,8 @@ class OrderedBufferDict(OrderedDictWrapper):
 # base types that can be constants
 # in addition, tuples and lists of these base types are also considered constants
 # If you edit this list, then you also need to edit the handlers in
-# ConstantValue in jit/script/init.cpp
-_constant_types = (bool, float, int, str, type(None), types.FunctionType, torch.device, torch.layout, torch.dtype)
+# toSugaredValue in jit/script/init.cpp
+_constant_types = (bool, float, int, str, type(None), types.FunctionType, torch.device, torch.layout, torch.dtype, dict)
 
 
 def _get_valid_constant(attr, v):
@@ -914,7 +924,7 @@ def _get_valid_constant(attr, v):
         "Valid constants are:\n" +
         "  1. a nn.ModuleList\n" +
         "  2. a value of type {{{}}}\n".format(constants) +
-        "  3. a list or tuple of (2)\n")
+        "  3. a dict, list, or tuple of (2)\n")
 
 
 def _create_methods_from_stubs(self, stubs):
