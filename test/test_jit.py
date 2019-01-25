@@ -2224,46 +2224,6 @@ class TestJit(JitTestCase):
             with self.assertRaisesRegex(RuntimeError, "is a zip"):
                 torch.load(f.name)
 
-    @unittest.skipIf(not PY35, "Python 3.5 needed")
-    def test_disabled_module(self):
-        from importlib import reload
-
-        old_jit_env = os.environ.get('PYTORCH_JIT', None)
-        os.environ['PYTORCH_JIT'] = '0'
-
-        reload(torch.jit)
-
-        class M(torch.jit.ScriptModule):
-            def __init__(self):
-                super(M, self).__init__(optimize=False)
-
-            @torch.jit.script_method
-            def forward(self):
-                return 3
-
-        m = M()
-
-        with self.assertRaisesRegex(AttributeError, "no attribute 'graph'"):
-            M().graph
-
-        if old_jit_env is None:
-            del os.environ['PYTORCH_JIT']
-        else:
-            os.environ['PYTORCH_JIT'] = old_jit_env
-
-        reload(torch.jit)
-
-        class M(torch.jit.ScriptModule):
-            def __init__(self):
-                super(M, self).__init__(optimize=False)
-
-            @torch.jit.script_method
-            def forward(self):
-                return 3
-
-        # assert that the compiler ran
-        M().graph
-
 
 class TestBatched(TestCase):
     # generate random examples and create an batchtensor with them
