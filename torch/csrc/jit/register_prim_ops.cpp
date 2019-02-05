@@ -1110,6 +1110,14 @@ Operation listNe<Shared<TensorList>>(const Node* node) {
   };
 }
 
+Operation listList(const Node* node) {
+  return [=](Stack& stack) {
+    // Intentional no-op, needed to match Python semantics for list(iterable),
+    // but in JIT these will already be lists
+    return 0;
+  };
+}
+
 template <class TList, class TElement>
 Operation listAdd(const Node* node) {
   return [=](Stack& stack) {
@@ -1205,6 +1213,35 @@ Operation listSetItem<Shared<BoolList>, bool>(const Node* node) {
   };
 }
 
+Operation tupleToList(const Node* node) {
+  AT_ASSERT(node->inputs().size() == 1);
+  auto tuple = node->inputs().at(0)->type()->cast<TupleType>();
+  AT_ASSERT(tuple);
+  auto contained_types = tuple->containedTypes();
+  if (contained_types.size() > 1) {
+    // Check that all elements of the tuple have the same type
+    auto expected_type = contained_types.at(0);
+    for (auto type : contained_types) {
+      if (!type->isSubtypeOf(expected_type) &&
+          expected_type->isSubtypeOf(type)) {
+        AT_ERROR(
+            "Cannot create a list from a tuple with different element types");
+      }
+    }
+  }
+
+  auto len = contained_types.size();
+  return [=](Stack& stack) {
+    std::vector<IValue> output;
+    output.reserve(len);
+    const auto& elements = pop(stack).toTuple()->elements();
+    for (auto element : elements) {
+      output.push_back(elements);
+    }
+    push(stack, IValue(output));
+    return 0;
+  };
+}
 
 RegisterOperators reg2({
 
@@ -1273,13 +1310,15 @@ RegisterOperators reg2({
             "aten::slice(" decl_type                                                  \
             "[] l, int start, int end=9223372036854775807, int step=1) -> " decl_type \
             "[]",                                                                     \
-            listSlice<Shared<c_type>, c_type::ElemType>)
+            listSlice<Shared<c_type>, c_type::ElemType>),                             \
+        Operator("aten::list(" decl_type "[] l) -> " decl_type "[]", listList)
 
       CREATE_LIST_OPS("int", IntList),
       CREATE_LIST_OPS("float", DoubleList),
       CREATE_LIST_OPS("Tensor", TensorList),
       CREATE_LIST_OPS("t", GenericList),
   #undef CREATE_LIST_OPS
+      Operator(aten::list, tupleToList),
 
       Operator("aten::eq(int[] a, int[] b) -> bool", listEq<Shared<IntList>>),
       Operator(
