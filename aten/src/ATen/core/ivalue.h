@@ -890,6 +890,9 @@ inline size_t at::ivalue::DictHash::operator()(
     return std::hash<std::string>()(ivalue.toStringRef());
   } else if (ivalue.isDouble()) {
     return std::hash<double>()(ivalue.toDouble());
+  } else if (ivalue.isTensor()) {
+    auto ptr = ivalue.toTensor().getIntrusivePtr().get();
+    return std::hash<c10::TensorImpl*>()(ptr);
   } else {
     throw std::runtime_error("Can't hash IValues with this tag");
   }
@@ -904,6 +907,9 @@ inline bool at::ivalue::DictEqualTo::operator()(
     return lhs.toStringRef() == rhs.toStringRef();
   } else if (lhs.isDouble()) {
     return lhs.toDouble() == rhs.toDouble();
+  } else if (lhs.isTensor()) {
+    return lhs.toTensor().getIntrusivePtr().get() ==
+        rhs.toTensor().getIntrusivePtr().get();
   } else {
     throw std::runtime_error("Can't compare IValues with this tag");
   }
