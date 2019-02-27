@@ -133,11 +133,11 @@ void createTensorToParameterNameMap(
     std::unordered_map<IValue*, QualifiedNamePtr>& result) {
   for (const auto& elem : module.get_parameters()) {
     const script::NamedInput& param = elem.value();
-    result[param.slot()] = QualifiedName::create(prefix, param.name_);
+    result[param.slot()] = QualifiedName::create(prefix, param.name);
   }
   for (const auto& elem : module.get_attributes()) {
     const script::NamedInput& param = elem.value();
-    result[param.slot()] = QualifiedName::create(prefix, param.name_);
+    result[param.slot()] = QualifiedName::create(prefix, param.name);
   }
   for (const auto& elem : module.get_modules()) {
     createTensorToParameterNameMap(
@@ -917,7 +917,8 @@ struct PythonPrintPass {
       Graph& graph,
       const std::string& name,
       const std::vector<c10::optional<IValue>>& defaults = {},
-      const std::vector<std::string>& param_names = {}) {
+      const std::vector<std::string>& param_names = {},
+      const std::vector<std::string>& attr_names = {}) {
     used_names_.clear(); // each graph can reuse local names
 
     // we always print constants at the top of the function, in the order
@@ -932,7 +933,7 @@ struct PythonPrintPass {
     // actual inputs, we will print these as, e.g. self.foo.bar
     // while we print the true_inputs out as parameters
     auto true_inputs =
-        graph.inputs().slice(0, graph.inputs().size() - param_names.size());
+        graph.inputs().slice(0, graph.inputs().size() - param_names.size() - attr_names.size());
     auto param_names_it = param_names.begin();
     for (auto param : graph.inputs().slice(true_inputs.size())) {
       assignValue(param, *param_names_it++);

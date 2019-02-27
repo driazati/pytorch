@@ -967,6 +967,8 @@ def _get_type(value):
         return torch._C.DynamicType.get()
     elif isinstance(value, str):
         return torch._C.StringType.get()
+    elif isinstance(value, int):
+        return torch._C.IntType.get()
 
 
 def _create_methods_from_stubs(self, stubs):
@@ -1167,6 +1169,8 @@ if _enabled:
 
         def _is_attribute(self, attr, value):
             containers = ['_parameters', '_modules', '_buffers']
+            if attr == 'training':
+                return False
             if attr in containers:
                 return False
             for container in containers:
