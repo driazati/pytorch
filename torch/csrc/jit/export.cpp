@@ -708,6 +708,9 @@ uint64_t ScriptModuleSerializer::writeIValue(
     written_ivalues_[ivalue.toString().get()] = ivalue_offset;
   } else if (ivalue.isGenericDict()) {
     auto dict = ivalue.toGenericDictRef();
+
+    torch::DictDef dict_def;
+    dict_def.set_num_elements(dict.size());
     // Add the pointer to the start of the key/value mappings
     auto data_ptr_index = pushBytes(sizeof(uint64_t), data);
 

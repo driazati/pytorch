@@ -30,6 +30,27 @@ message AttributeDef {
   optional string name = 2;
 }
 
+// IValue stuff
+
+message IValueDef {
+
+}
+
+message DictDef {
+  required int64 num_elements = 1;
+}
+
+message DictPairDef {
+  required fixed64 key_ref = 1;
+  required fixed64 value_ref = 2;
+}
+
+message StringDef {
+  required string value = 1;
+}
+
+
+
 message ParameterDef {
   // whether this parameter is registered as buffer or not
   optional bool is_buffer = 1;
