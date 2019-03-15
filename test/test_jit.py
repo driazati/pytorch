@@ -9,7 +9,7 @@ import torch.cuda
 import torch.jit.quantized
 from contextlib import contextmanager
 from itertools import product, chain
-import torch.frontend
+import torch.jit.frontend
 from torch.autograd import Variable, Function
 from torch.nn import Module
 from torch.autograd.function import traceable
@@ -47,7 +47,7 @@ from torch._C import TensorType, TupleType, FloatType, IntType, \
 from copy import deepcopy
 import random
 from typing import List, Dict, Optional, Tuple
-from torch.frontend import NotSupportedError
+from torch.jit.frontend import NotSupportedError
 from torch.jit import BatchTensor
 from torch import Tensor
 from torch.jit.annotations import BroadcastingList2, BroadcastingList3
@@ -8581,7 +8581,7 @@ a")
         def traced_fn(x):
             return weak_script_fn(x)
 
-        graph = torch.jit.trace(traced_fn, (torch.tensor(5),), compile_weak_script=True).graph
+        graph = torch.jit.trace(traced_fn, (torch.tensor(5),)).graph
         FileCheck().check("prim::Loop").run(str(graph))
 
     def test_weak_script_fn_from_traced_module(self):
