@@ -744,7 +744,7 @@ class TestJit(JitTestCase):
         self.assertEqual(fn(x, y), fn_traced(x, y))
 
     def test_disabled(self):
-        torch._jit_internal._enabled = False
+        torch.jit._enabled = False
         try:
             def f(x, y):
                 return x + y
@@ -763,7 +763,7 @@ class TestJit(JitTestCase):
             # We need to or those two conditions to make it work with all versions of Python
             self.assertTrue(inspect.ismethod(MyModule.method) or inspect.isfunction(MyModule.method))
         finally:
-            torch._jit_internal._enabled = True
+            torch.jit._enabled = True
 
     def test_train_eval(self):
         class Sub(nn.Module):
@@ -4503,21 +4503,21 @@ a")
             assert 1 == 1, "hello"
             return x
 
-        ast = torch.frontend.get_jit_def(fn)
+        ast = torch.jit.frontend.get_jit_def(fn)
         self.assertExpected(str(ast))
 
     @unittest.skipIf(not PY2, "Requires python 2")
     def test_python_frontend_py2(self):
         def fn():
             raise Exception("hello")
-        ast = torch.frontend.get_jit_def(fn)
+        ast = torch.jit.frontend.get_jit_def(fn)
         self.assertExpected(str(ast))
 
     @unittest.skipIf(PY2, "Requires python 3")
     def test_python_frontend_py3(self):
         def fn():
             raise Exception("hello")
-        ast = torch.frontend.get_jit_def(fn)
+        ast = torch.jit.frontend.get_jit_def(fn)
         self.assertExpected(str(ast))
 
     def _make_scalar_vars(self, arr, dtype):
