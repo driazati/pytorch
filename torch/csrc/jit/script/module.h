@@ -526,7 +526,7 @@ struct Module {
   NamedModule* find_module(const std::string& name) {
     return modules.find(name);
   }
-  Method* find_method(const std::string& name) {
+  Method* find_method(const std::string& name) const {
     if (auto* pm = methods.find(name)) {
       return pm->get();
     }
